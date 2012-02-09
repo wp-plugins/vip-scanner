@@ -1,7 +1,10 @@
 <?php
 
-class BaseScanner
-{
+class BaseScanner {
+	const LEVEL_BLOCKER = 'blocker';
+	const LEVEL_WARNING = 'warning';
+	const LEVEL_NOTE = 'note';
+
 	var $files = array();
 	var $checks = array();
 	var $total_checks = 0;
@@ -93,9 +96,18 @@ class BaseScanner
 			return false;
 		}
 				
-		foreach( $this->checks as $check ) {
-			$this->load_check( $check );
-			
+		foreach( $this->checks as $check => $check_file ) {
+			if ( is_numeric( $check ) ) { // a bit of a hack, but let's us pass in either associative or indexed or combined array
+				$check = $check_file;
+				$check_file = '';
+			}
+			$check_exists = $this->load_check( $check, $check_file );
+
+			if ( ! $check_exists ) {
+				$this->add_error( 'invalid-check', sprintf( __( 'Check "%s" does not exist.', 'vip-scanner' ), $check ), 'blocker' );
+				continue;
+			}
+
 			$check = new $check;
 			if ( $check instanceof BaseCheck ) {
 				
@@ -138,11 +150,12 @@ class BaseScanner
 		return $errors;
 	}
 	
-	private function load_check( $check ) {
+	private function load_check( $check, $file = '' ) {
 		
 		if( ! class_exists( $check ) ) {
-			$path = sprintf( '%1$s/%2$s.php', VIP_SCANNER_CHECKS_DIR, $check );
-			include( $path );
+			$path =  ! empty( $file ) ? $file : sprintf( '%1$s/%2$s.php', VIP_SCANNER_CHECKS_DIR, $check );
+			if ( file_exists( $path ) )
+				include( $path );
 		}
 		
 		return class_exists( $check );
