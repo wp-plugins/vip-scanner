@@ -18,6 +18,7 @@ class VIP_Scanner_UI {
 
 	function __construct() {
 		add_action( 'init', array( $this, 'init' ) );
+		do_action( 'vip_scanner_loaded' );
 	}
 
 	function init() {
