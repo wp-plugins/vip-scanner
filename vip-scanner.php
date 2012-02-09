@@ -3,7 +3,7 @@
 Plugin Name: VIP Scanner
 Plugin URI: http://vip.wordpress.com
 Description: Easy to use UI for the VIP Scanner.
-Author: Mohammad Jangda (Original code by Pross, Otto42, and Thorsten Ott)
+Author: Mohammad Jangda (Original code by Pross, Otto42, and Thorsten Ott), Automattic
 Version: 0.1
 
 License: GPLv2
@@ -169,11 +169,7 @@ class VIP_Scanner_UI {
 			
 			<?php if( ! empty( $file ) ) : ?>
 				<span class="scan-file">
-					<?php if( $svn_url ) : // TODO: Implement hyperlink ?>
-						<a href="<?php echo sprintf( 'http://vip-svn.wordpress.com%s', $file_theme_path ); ?>" title="View file in SVN. Opens new window." target="_blank"><?php echo $file; ?></a>
-					<?php else : ?>
-						<?php echo $file; ?>
-					<?php endif; ?>
+					<?php echo $file; ?>
 				</span>
 			<?php endif; ?>
 			
