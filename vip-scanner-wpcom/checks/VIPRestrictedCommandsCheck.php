@@ -39,23 +39,32 @@ class VIPRestrictedCommandsCheck extends BaseCheck
 
 			"add_feed" => array( "level" => "Warning", "note" => "Custom feed implementation" ),
 
+			'query_posts' => array( 'level' => 'Warning', 'note' => 'Rewriting the main loop. WP_Query or get_posts (with suppress_filters => false) might be better functions: http://developer.wordpress.com/2012/05/14/querying-posts-without-query_posts/' ),
+
 			// Uncached functions
 			'get_category_by_slug' => array( 'level' => 'Warning', 'note' => 'Uncached function. Should be used on a limited basis or cached' ),
 			'get_cat_ID' => array( 'level' => 'Warning', 'note' => 'Uncached function. Should be used on a limited basis or cached' ),
 			'get_term_by' => array( 'level' => 'Warning', 'note' => 'Uncached function. Should be used on a limited basis or cached' ),
 			'get_page_by_title' => array( 'level' => 'Warning', 'note' => 'Uncached function. Should be used on a limited basis or cached' ),
+			'get_page_by_path' => array( 'level' => 'Warning', 'note' => 'Uncached function. Should be used on a limited basis or cached' ),
 			'wp_get_object_terms' => array( 'level' => 'Warning', 'note' => 'Uncached function. Should be used on a limited basis or cached' ),
+			'wp_get_post_terms' => array( 'level' => 'Warning', 'note' => 'Uncached function. Should be used on a limited basis or cached' ),
+			'get_posts' => array( 'level' => 'Warning', 'note' => 'Uncached function. Use WP_Query or ensure suppress_filters is false' ),
+			'wp_get_recent_posts' => array( 'level' => 'Warning', 'note' => 'Uncached function. Use WP_Query or ensure suppress_filters is false' ),
 
 			// Object cache bypass
 			"wpcom_uncached_get_post_meta" => array( "level" => "Warning", "note" => "Bypassing object cache, please validate" ),
 			"wpcom_uncached_get_post_by_meta" => array( "level" => "Warning", "note" => "Bypassing object cache, please validate" ),
 
+			// Functions that need to be used with care
+			'wpcom_vip_load_custom_cdn' => array( 'level' => 'Blocker', 'note' => 'This should only be used if you have a CDN already set up.' ),
+
 			// Role modifications
-			"get_role" => array( "level" => "Warning", "note" => "Role access" ),
-			"add_role" => array( "level" => "Blocker", "note" => "Role modification" ),
- 			"remove_role" => array( "level" => "Blocker", "note" => "Role modification" ),
- 			"add_cap" => array( "level" => "Blocker", "note" => "Role modification" ),
- 			"remove_cap" => array( "level" => "Blocker", "note" => "Role modification" ),
+			"get_role" => array( "level" => "Warning", "note" => "Role access; use helper functions http://lobby.vip.wordpress.com/best-practices/custom-user-roles/" ),
+			"add_role" => array( "level" => "Blocker", "note" => "Role modification; use helper functions http://lobby.vip.wordpress.com/best-practices/custom-user-roles/" ),
+ 			"remove_role" => array( "level" => "Blocker", "note" => "Role modification; use helper functions http://lobby.vip.wordpress.com/best-practices/custom-user-roles/" ),
+ 			"add_cap" => array( "level" => "Blocker", "note" => "Role modification; use helper functions http://lobby.vip.wordpress.com/best-practices/custom-user-roles/" ),
+ 			"remove_cap" => array( "level" => "Blocker", "note" => "Role modification; use helper functions http://lobby.vip.wordpress.com/best-practices/custom-user-roles/" ),
 
 			// debugging
 			"error_log" => array( "level" => "Blocker", "note" => "Filesystem operation" ),
@@ -103,8 +112,8 @@ class VIPRestrictedCommandsCheck extends BaseCheck
 			"filemtime" => array( "level" => "Warning", "note" => "Gets file modification time" ),
 			"fileowner" => array( "level" => "Warning", "note" => "Gets file owner" ),
 			"fileperms" => array( "level" => "Warning", "note" => "Gets file permissions" ),
-			"filesize" => array( "level" => "Warning", "note" => "Gets file size" ),
-			"filetype" => array( "level" => "Warning", "note" => "Gets file type" ),
+			"filesize" => array( "level" => "Blocker", "note" => "Gets file size; should not be called on the front-end." ),
+			"filetype" => array( "level" => "Blocker", "note" => "Gets file type; should not be called on the front-end." ),
 			"flock" => array( "level" => "Warning", "note" => "Portable advisory file locking" ),
 			"fnmatch" => array( "level" => "Warning", "note" => "Match filename against a pattern" ),
 			"fopen" => array( "level" => "Blocker", "note" => "Opens file or URL" ),
