@@ -1,9 +1,9 @@
 === VIP Scanner ===
-Contributors: batmoo, automattic, tott, mfields, keoshi, betzster
+Contributors: batmoo, automattic, tott, mfields, keoshi, betzster, mobius5150, nickdaugherty
 Tags: scanner, scan, files, security, theme check
 Requires at least: 3.4
-Tested up to: 3.4.2
-Stable tag: 0.4
+Tested up to: 3.9
+Stable tag: 0.6
 
 Scan all sorts of themes and files and things.
 
@@ -34,6 +34,22 @@ To come...
 1. The VIP Scanner has a slick UI. Slicker than your average.
 
 == Changelog ==
+
+= 0.6 =
+
+* Analysis tab for analysing functions, classes, namespaces, shortcodes, actions, filters, capabilities, roles, CPTs, taxonomies, scripts, and styles.
+* WP CLI command for analysis: wp vip-scanner analyze-theme
+* New checks, including VCMergeConflictCheck, WordPressCodingStandardsCheck
+* PHP Code Sniffer integration using the WordPress Coding Standards
+* Check improvements: VIPRestrictedCommandsCheck, VIPRestrictedPatternsCheck, PHPShortTagsCheck
+* Added unit testing for some tests
+
+= 0.5 =
+* ClamAV Integration
+* New checks, including VIPInitCheck, filter_input, WP_Widget_Tag_Cloud, and more!
+* WP CLI Support (using vip-scanner command)
+* Reducing false positives
+* Adjusting severity of several checks
 
 = 0.4 =
 * UI Refresh

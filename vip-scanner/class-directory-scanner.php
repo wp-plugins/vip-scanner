@@ -2,10 +2,14 @@
 
 class DirectoryScanner extends BaseScanner
 {
-	function __construct( $path, $checks ) {
+	protected $path;
+
+	function __construct( $path, $review ) {
+		$this->set_path( $path );
+
 		// Scan directory and read in contents
-		$files = $this->get_file_contents( $path );
-		parent::__construct( $files, $checks );
+		$files = $this->get_file_contents( $this->get_path() );
+		parent::__construct( $files, $review );
 	}
 
 	function get_files_in_directory( $directory = '.' ) {
@@ -66,5 +70,27 @@ class DirectoryScanner extends BaseScanner
 			}
 		}
 		return $file_contents;
+	}
+
+	/**
+	 * Set the filesystem path the DirectoryScanner is operating on
+	 * 
+	 * @param string $path The filesystem path
+	 * 
+	 * @return DirectoryScanner The DirectoryScanner
+	 */
+	public function set_path( $path = '' ) {
+		$this->path = $path;
+
+		return $this;
+	}
+
+	/**
+	 * Retrieve the filesystem path the DirectoryScanner is operating on
+	 * 
+	 * @return string The filesystem path
+	 */
+	public function get_path() {
+		return $this->path;
 	}
 }

@@ -4,26 +4,31 @@ Plugin Name: VIP Scanner
 Plugin URI: http://vip.wordpress.com
 Description: Easy to use UI for the VIP Scanner.
 Author: Automattic (Original code by Pross, Otto42, and Thorsten Ott)
-Version: 0.4
+Version: 0.6
 
 License: GPLv2
 */
 require_once( dirname( __FILE__ ) . '/vip-scanner/vip-scanner.php' );
 
+if ( defined('WP_CLI') && WP_CLI )
+	require_once( dirname( __FILE__ ) . '/vip-scanner/class-wp-cli.php' );
+
 class VIP_Scanner_UI {
 	const key = 'vip-scanner';
 
+	public $default_review;
 	private static $instance;
 	private $blocker_types;
-	private $default_review;
 
 	private $to;
 
 	function __construct() {
 		add_action( 'init', array( $this, 'init' ) );
 		add_action( 'admin_init', array( $this, 'admin_init' ) );
-		do_action( 'vip_scanner_loaded' );
+	}
 
+	function init() {
+		add_action( 'admin_menu', array( $this, 'add_menu_page' ) );
 
 		$this->blocker_types = apply_filters( 'vip_scanner_blocker_types', array(
 			'blocker'  => __( 'Blockers', 'theme-check' ),
@@ -31,14 +36,12 @@ class VIP_Scanner_UI {
 			'required' => __( 'Required', 'theme-check' ),
 		) );
 
+		do_action( 'vip_scanner_loaded' );
+
 		$review_types = VIP_Scanner::get_instance()->get_review_types();
 		$this->default_review = apply_filters( 'vip_scanner_default_review', 0, $review_types );
 
 		$this->to = apply_filters( 'vip_scanner_email_to', '' );
-	}
-
-	function init() {
-		add_action( 'admin_menu', array( $this, 'add_menu_page' ) );
 	}
 
 	function admin_init() {
@@ -83,6 +86,9 @@ class VIP_Scanner_UI {
 
 		wp_enqueue_style( 'vip-scanner-css', plugins_url( 'css/vip-scanner.css', __FILE__ ), array(), '20120320' );
 		wp_enqueue_script( 'vip-scanner-js', plugins_url( 'js/vip-scanner.js', __FILE__ ), array('jquery'), '20120320' );
+		wp_enqueue_script( 'jquery-ui-accordion');
+		wp_enqueue_script( 'jquery-ui-core' );
+		wp_enqueue_style('vip-scanner-admin-ui-css', 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/themes/smoothness/jquery-ui.min.css');
 	}
 
 	function display_admin_page() {
@@ -130,7 +136,7 @@ class VIP_Scanner_UI {
 
 		$transient_key = 'vip_scanner_' . md5( $theme . $review );
 		if ( $scanner !== get_transient( $transient_key ) )
-			set_transient( $transient_key, $scanner );
+			@set_transient( $transient_key, $scanner );
 
 		if ( $scanner ):
 			$this->display_theme_review_result( $scanner, $theme );
@@ -204,6 +210,7 @@ class VIP_Scanner_UI {
 		<h2 class="nav-tab-wrapper">
 			<a href="#errors" class="nav-tab"><?php echo absint( $errors ); ?> <?php _e( 'Errors', 'theme-check' ); ?></a>
 			<a href="#notes" class="nav-tab"><?php echo absint( $notes ); ?> <?php _e( 'Notes', 'theme-check' ); ?></a>
+			<a href="#analysis" class="nav-tab"><?php _e( 'Analysis', 'theme-check' ); ?></a>
 		</h2>
 
 		<div id="errors">
@@ -233,14 +240,40 @@ class VIP_Scanner_UI {
 					continue;
 				?>
 				<h3><?php echo esc_html( $title ); ?></h3>
-				<ol class="scan-results-list">
+				<ul class="analysis-results-list">
 					<?php
 					foreach( $errors as $result ) {
 						$this->display_theme_review_result_row( $result, $scanner, $theme );
 					}
 					?>
-				</ol>
+				</ul>
 			<?php endforeach; ?>
+		</div>
+			
+		<div id="analysis">
+			<div id="analysis-accordion">
+				<?php 
+				$empty = array();
+				foreach ( $scanner->renderers as $renderer ) {
+					if ( $renderer->name() !== 'Files' ) {
+						$renderer->analyze_prefixes();
+					}
+					
+					// Display empty renderers after the others
+					if ( $renderer->is_empty() ) {
+						$empty[] = $renderer;
+						continue;
+					}
+
+					$renderer->display();
+				}
+				
+				foreach ( $empty as $renderer ) {
+					$renderer->display();
+				}
+				
+				?>
+			</div>
 		</div>
 		<?php
 	}
@@ -399,7 +432,7 @@ class VIP_Scanner_UI {
 
 		if ( false === $scanner = get_transient( $transient_key ) ) {
 			$scanner = VIP_Scanner::get_instance()->run_theme_review( $theme, $review );
-			set_transient( $transient_key, $scanner );
+			@set_transient( $transient_key, $scanner );
 		}
 
 		return $scanner;
@@ -423,6 +456,8 @@ class VIP_Scanner_UI {
 			header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
 
 			echo $this->get_plaintext_theme_review_export( $scanner, $theme, $review );
+
+			do_action( 'vip_scanner_form_success' );
 
 			exit;
 		}
@@ -480,8 +515,11 @@ class VIP_Scanner_UI {
 		);
 
 		// Error message if the wp_mail didn't work
-		if ( !$mail )
+		if ( !$mail ) {
 			$args['message'] = 'fail';
+		} else {
+			do_action( 'vip_scanner_form_success' );
+		}
 
 		wp_safe_redirect( add_query_arg( $args ) );
 		exit;
@@ -556,4 +594,4 @@ class VIP_Scanner_UI {
 }
 
 // Initialize!
-VIP_Scanner_UI::get_instance();
+$vip_scanner = VIP_Scanner_UI::get_instance();

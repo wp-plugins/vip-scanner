@@ -5,24 +5,28 @@ class BaseScanner {
 	const LEVEL_WARNING = 'warning';
 	const LEVEL_NOTE = 'note';
 
-	var $files = array();
-	var $checks = array();
-	var $total_checks = 0;
-	var $errors = array();
-	var $known_extensions = array(
+	public $files = array();
+	public $checks = array();
+	public $analyzers = array();
+	public $total_checks = 0;
+	public $errors = array();
+	public $renderers = array();
+	public $stats = array();
+	public $known_extensions = array(
 		'php' => array( 'php', 'php5', 'inc' ),
 		'css' => 'css',
 		'js' => 'js',
 	);
 
 
-	function __construct( $files, $checks ) {
+	public function __construct( $files, $review ) {
 		// Given a set of files & a set of Checks
 		// --- Group files by type
 		// --- Run Checks against Files
 		// --- Return results
 		$this->files = $this->group_files( $files );
-		$this->checks = $checks;
+		$this->checks = $review['checks'];
+		$this->analyzers = $review['analyzers'];
 	}
 
 	protected function add_error( $slug, $description, $level, $file = '', $lines = array() ) {
@@ -40,7 +44,7 @@ class BaseScanner {
 		$this->errors[] = $error;
 	}
 
-	function get_file_type( $filename ) {
+	public function get_file_type( $filename ) {
 		
 		$splosion = explode( '.', $filename );
 
@@ -55,11 +59,11 @@ class BaseScanner {
 		return $file_extension;
 	}
 
-	function is_known_file_type( $filename ) {
+	public function is_known_file_type( $filename ) {
 		return in_array( $this->get_file_type( $filename ), array_keys( $this->known_extensions ) );
 	}
 
-	function get_file_count() {
+	public function get_file_count() {
 		$count = 0;
 		foreach( $this->files as $files_by_filetype ) {
 			foreach ( $files_by_filetype as $filename => $file ) {
@@ -69,7 +73,7 @@ class BaseScanner {
 		return $count;
 	}
 
-	function group_files( $files ) {
+	public function group_files( $files ) {
 
 		$grouped_files = array();
 
@@ -87,7 +91,7 @@ class BaseScanner {
 		return $grouped_files;
 	}
 
-	function scan() {
+	public function scan( $scanners = array( 'checks', 'analyzers' ) ) {
 		$pass = true;
 
 		if( empty( $this->files ) ) {
@@ -99,12 +103,40 @@ class BaseScanner {
 			return false;
 		}
 
-		foreach( $this->checks as $check => $check_file ) {
+		if ( in_array( 'checks', $scanners ) ) {
+			$this->run_scanners( 'checks', $pass );
+			$this->result = $pass;
+		}
+
+		if ( in_array( 'analyzers', $scanners ) ) {
+			$this->run_scanners( 'analyzers' );
+		}
+		
+		return $pass;
+	}
+	
+	protected function run_scanners( $type, &$pass = null ) {
+		if ( 'checks' !== $type && 'analyzers' !== $type ) {
+			return;
+		}
+		
+		if ( 'analyzers' === $type ) {
+			$analyzed_files = array();
+			foreach ( $this->files['php'] as $filepath => $filecontents ) {
+				$analyzed_files[] = new AnalyzedPHPFile( $filepath, $filecontents );
+			}
+			
+			foreach ( $this->files['css'] as $filepath => $filecontents ) {
+				$analyzed_files[] = new AnalyzedCSSFile( $filepath, $filecontents );
+			}
+		}
+		
+		foreach( $this->$type as $check => $check_file ) {
 			if ( is_numeric( $check ) ) { // a bit of a hack, but let's us pass in either associative or indexed or combined array
 				$check = $check_file;
 				$check_file = '';
 			}
-			$check_exists = $this->load_check( $check, $check_file );
+			$check_exists = $this->load_check( $check, $check_file, $type );
 
 			if ( ! $check_exists ) {
 				$this->add_error( 'invalid-check', sprintf( __( 'Check "%s" does not exist.', 'vip-scanner' ), $check ), 'blocker' );
@@ -112,7 +144,8 @@ class BaseScanner {
 			}
 
 			$check = new $check;
-			if ( $check instanceof BaseCheck ) {
+			if ( 'checks' === $type && $check instanceof BaseCheck ) {
+				$check->set_scanner( $this );
 
 				$pass = $pass & $check->check( $this->files );
 				$results = $check->get_results();
@@ -122,13 +155,16 @@ class BaseScanner {
 				}
 
 				$this->total_checks += $results['count'];
+			} elseif ( 'analyzers' === $type && $check instanceof BaseAnalyzer ) {
+				$check->set_scanner( $this );
+				$check->analyze( $analyzed_files );
+				$this->renderers = array_merge( $check->get_renderers(), $this->renderers );
+				$this->stats = array_merge( $check->get_stats(), $this->stats );
 			}
 		}
-		$this->result = $pass;
-		return $pass;
 	}
 
-	function get_results() {
+	public function get_results() {
 		return array(
 			'result' => $this->result,
 			'total_files' => $this->get_file_count(),
@@ -137,7 +173,7 @@ class BaseScanner {
 		);
 	}
 
-	function get_errors( $levels = array() ) {
+	public function get_errors( $levels = array() ) {
 		if( empty( $levels ) )
 			return $this->errors;
 
@@ -153,7 +189,22 @@ class BaseScanner {
 		return $errors;
 	}
 
-	function get_error_levels() {
+	/**
+	 * Determine if the Scanner has flagged a given error
+	 * 
+	 * @param  string  $slug The error slug to check for
+	 * @return boolean       Boolean indicating if the Scanner flagged the error
+	 */
+	public function has_error( $slug ) {
+		foreach( $this->get_errors() as $error ) {
+			if ( $slug == $error['slug'] )
+				return true;
+		}
+
+		return false;
+	}
+
+	public function get_error_levels() {
 		$levels = array();
 
 		foreach ( $this->errors as $error ) {
@@ -165,10 +216,16 @@ class BaseScanner {
 		return $levels;
 	}
 
-	private function load_check( $check, $file = '' ) {
+	private function load_check( $check, $file = '', $type = 'checks' ) {
 
 		if( ! class_exists( $check ) ) {
-			$path =  ! empty( $file ) ? $file : sprintf( '%1$s/%2$s.php', VIP_SCANNER_CHECKS_DIR, $check );
+			if ( 'checks' === $type ) {
+				$basepath = VIP_SCANNER_CHECKS_DIR;
+			} elseif ( 'analyzers' === $type) {
+				$basepath = VIP_SCANNER_ANALYZERS_DIR;
+			}
+			
+			$path =  ! empty( $file ) ? $file : sprintf( '%1$s/%2$s.php', $basepath, $check );
 			if ( file_exists( $path ) )
 				include( $path );
 		}
