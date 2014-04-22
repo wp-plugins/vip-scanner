@@ -4,7 +4,7 @@ Plugin Name: VIP Scanner
 Plugin URI: http://vip.wordpress.com
 Description: Easy to use UI for the VIP Scanner.
 Author: Automattic (Original code by Pross, Otto42, and Thorsten Ott)
-Version: 0.6
+Version: 0.7
 
 License: GPLv2
 */
@@ -14,7 +14,8 @@ if ( defined('WP_CLI') && WP_CLI )
 	require_once( dirname( __FILE__ ) . '/vip-scanner/class-wp-cli.php' );
 
 class VIP_Scanner_UI {
-	const key = 'vip-scanner';
+	const   key      = 'vip-scanner';
+	private $version = null;
 
 	public $default_review;
 	private static $instance;
@@ -72,6 +73,16 @@ class VIP_Scanner_UI {
 			self::$instance = new $class_name;
 		}
 		return self::$instance;
+	}
+
+	function get_version() {
+		if ( is_null( $this->version ) ) {
+			// Load plugin version from plugin data
+			$plugin_data = get_plugin_data( __FILE__ );
+			$this->version = $plugin_data['Version'];
+		}
+
+		return $this->version;
 	}
 
 	function add_menu_page() {
@@ -134,7 +145,7 @@ class VIP_Scanner_UI {
 
 		$scanner = VIP_Scanner::get_instance()->run_theme_review( $theme, $review );
 
-		$transient_key = 'vip_scanner_' . md5( $theme . $review );
+		$transient_key = 'vip_scanner_' . $this->get_version() . '_' . md5( $theme . $review );
 		if ( $scanner !== get_transient( $transient_key ) )
 			@set_transient( $transient_key, $scanner );
 
@@ -336,7 +347,13 @@ class VIP_Scanner_UI {
 		$results = "";
 
 		$results .= $title = apply_filters( 'vip_scanner_export_title', "$theme - $review", $review ) . PHP_EOL;
-		$results .= str_repeat( '=', strlen( $title ) ) . PHP_EOL . PHP_EOL;
+		$title_len = strlen( $title );
+		$results .= str_repeat( '=', $title_len ) . PHP_EOL;
+
+		$version_str = ' ' . sprintf( __( 'VIP Scanner %s', 'theme-check' ), $this->get_version() ) . ' ';
+		$side_spacing = ( $title_len - strlen( $version_str ) ) / 2.;
+		$results .= str_repeat( '=', ceil( $side_spacing ) ) . $version_str . str_repeat( '=', floor( $side_spacing ) ) . PHP_EOL;
+		$results .= str_repeat( '=', $title_len ) . PHP_EOL . PHP_EOL;
 
 		$form_results = apply_filters( 'vip_scanner_form_results', '', $review );
 
@@ -428,7 +445,7 @@ class VIP_Scanner_UI {
 	}
 
 	function get_cached_theme_review( $theme, $review ) {
-		$transient_key = 'vip_scanner_' . md5( $theme . $review );
+		$transient_key = 'vip_scanner_' . $this->get_version() . '_' . md5( $theme . $review );
 
 		if ( false === $scanner = get_transient( $transient_key ) ) {
 			$scanner = VIP_Scanner::get_instance()->run_theme_review( $theme, $review );
@@ -495,7 +512,7 @@ class VIP_Scanner_UI {
 
 			// redirect with error message
 			if ( !$zip )
-				break;
+				return;
 
 			$mail = wp_mail(
 				$this->to,

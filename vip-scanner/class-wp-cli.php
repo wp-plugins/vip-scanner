@@ -14,7 +14,7 @@ class VIPScanner_Command extends WP_CLI_Command {
 	 * Perform checks on a theme
 	 *
 	 * @subcommand scan-theme
-	 * @synopsis --theme=<theme-name> --scan_type=<scan-type> [--format=<format>] [--summary=<summary>]
+	 * @synopsis --theme=<theme-name> [--scan_type=<scan-type>] [--format=<format>] [--summary=<summary>]
 	 */
 	public function scan_theme( $args, $assoc_args ) {
 		$defaults = array(
@@ -76,9 +76,8 @@ class VIPScanner_Command extends WP_CLI_Command {
 				foreach ( $errors as $error ) {
 					$lines = array();
 
-					// Not all errors have lines
-					if ( isset( $error['lines'] ) )
-						$lines = $error['lines'];
+					// Not all errors have lines -- assign a null line if we lack lines entirely
+					$lines =  ( isset( $error['lines'] ) ) ? $error['lines'] : array( '' );
 
 					// In JSON output, group the lines together
 					if ( 'json' == $args['format'] ) {
